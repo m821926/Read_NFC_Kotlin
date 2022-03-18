@@ -52,6 +52,7 @@ class MainActivity : ComponentActivity() {
         val intent = Intent(this, javaClass).apply {
             addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
         }
+//        nfcPendingIntent = PendingIntent.getActivity(this, 0, intent, 0)
         nfcPendingIntent = PendingIntent.getActivity(this, 0, intent, 0)
 
         //Indicate what type of intents we want to intercept
@@ -64,9 +65,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        nfcIntentFiltersArray = arrayOf(ndef)
-        nfcTechListsArray = arrayOf(arrayOf<String>(NfcF::class.java.name))
+        val Nonndef = IntentFilter(NfcAdapter.ACTION_TECH_DISCOVERED)
 
+        nfcIntentFiltersArray = arrayOf(Nonndef,ndef)
+        nfcTechListsArray = arrayOf(arrayOf<String>(NfcF::class.java.name))
 
 
         setContent {
@@ -129,15 +131,17 @@ class MainActivity : ComponentActivity() {
             }
             else {
                 val messages = processIntent(intent)
-                messages[0]?.let{
-                    NFC_Received_Value.value = "\nValue 1: " + it
-                }
+                if(messages.size!=0) {
+                    messages[0]?.let {
+                        NFC_Received_Value.value = "\nValue 1: " + it
+                    }
 
-                messages[1]?.let{
-                    NFC_Received_Value.value += "\nValue 2: " + it
-                }
+                    messages[1]?.let {
+                        NFC_Received_Value.value += "\nValue 2: " + it
+                    }
 
-                NFCMessageWasWritten.value=false
+                    NFCMessageWasWritten.value = false
+                }
             }
         }
     }
@@ -149,7 +153,8 @@ class MainActivity : ComponentActivity() {
 
     public override fun onResume() {
         super.onResume()
-        nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, nfcIntentFiltersArray, nfcTechListsArray)
+       //nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, nfcIntentFiltersArray, nfcTechListsArray)
+        nfcAdapter.enableForegroundDispatch(this, nfcPendingIntent, null, null)
     }
 
     private fun processIntent(checkIntent: Intent):MutableList<String> {
