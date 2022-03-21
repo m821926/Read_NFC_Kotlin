@@ -45,8 +45,12 @@ class MainActivity : ComponentActivity() {
 
 
         nfcAdapter = NfcAdapter.getDefaultAdapter(this)
-        Log.d("NFC", "NFC supported " + (nfcAdapter != null).toString())
-        Log.d("NFC", "NFC enabled " + (nfcAdapter?.isEnabled).toString())
+        Log.d("NFC", "NFC supported " + (nfcAdapter).toString())
+        Log.d("NFC", "NFC enabled " + (nfcAdapter.isEnabled).toString())
+
+        if(intent != null) {
+            nfcProcessMessage(intent)
+        }
 
         // Intercept intent
         val intent = Intent(this, javaClass).apply {
@@ -93,11 +97,9 @@ class MainActivity : ComponentActivity() {
                         TextField(value = nfcTextToWrite2 , onValueChange = { nfcTextToWrite2 = it}, label = {Text("Message 2")})
                         Spacer(modifier = Modifier.height(16.dp))
                         Button(onClick = {
-                            if(intent != null) {
-                                newNFCTextToWrite1=nfcTextToWrite1
-                                newNFCTextToWrite2=nfcTextToWrite2
-                                writeNFCMessage.value = true
-                            }
+                            newNFCTextToWrite1=nfcTextToWrite1
+                            newNFCTextToWrite2=nfcTextToWrite2
+                            writeNFCMessage.value = true
                         }) {
                             Text("Write NFC TAG")
                         }
@@ -130,19 +132,23 @@ class MainActivity : ComponentActivity() {
                 NFCMessageWasWritten.value=true
             }
             else {
-                val messages = processIntent(intent)
-                if(messages.size!=0) {
-                    messages[0]?.let {
-                        NFC_Received_Value.value = "\nValue 1: " + it
-                    }
-
-                    messages[1]?.let {
-                        NFC_Received_Value.value += "\nValue 2: " + it
-                    }
-
-                    NFCMessageWasWritten.value = false
-                }
+                nfcProcessMessage(intent)
             }
+        }
+    }
+
+    private fun nfcProcessMessage(intent: Intent) {
+        val messages = processIntent(intent)
+        if (messages.size != 0) {
+            messages[0].let {
+                NFC_Received_Value.value = "\nValue 1: " + it
+            }
+
+            messages[1].let {
+                NFC_Received_Value.value += "\nValue 2: " + it
+            }
+
+            NFCMessageWasWritten.value = false
         }
     }
 
@@ -186,7 +192,7 @@ class MainActivity : ComponentActivity() {
     }
 
     fun retrieveNFCMessage(intent: Intent?): MutableList<String> {
-        var messages:MutableList<String> = mutableListOf()
+        val messages:MutableList<String> = mutableListOf()
         intent?.let {
             if (NfcAdapter.ACTION_NDEF_DISCOVERED == intent.action) {
                 val nDefMessages = getNDefMessages(intent)
@@ -230,20 +236,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun writeTag(intent: Intent, tagText: String) {
-        intent?.let {
-            val tag = it.getParcelableExtra<Tag>(NfcAdapter.EXTRA_TAG)
-            MifareUltralight.get(tag)?.use { ultralight ->
-                ultralight.connect()
-                Charset.forName("US-ASCII").also { usAscii ->
-                    ultralight.writePage(4, "abcd".toByteArray(usAscii))
-                    ultralight.writePage(5, "efgh".toByteArray(usAscii))
-                    ultralight.writePage(6, "ijkl".toByteArray(usAscii))
-                    ultralight.writePage(7, "mnop".toByteArray(usAscii))
-                }
-            }
-        }
-    }
     fun createNdefTextRecord(payload: String, locale: Locale, encodeInUtf8: Boolean): NdefRecord {
         val langBytes = locale.language.toByteArray(Charset.forName("US-ASCII"))
         val utfEncoding = if (encodeInUtf8) Charset.forName("UTF-8") else Charset.forName("UTF-16")
@@ -251,7 +243,7 @@ class MainActivity : ComponentActivity() {
         val utfBit: Int = if (encodeInUtf8) 0 else 1 shl 7
         val status = (utfBit + langBytes.size).toChar()
         val data = ByteArray(1 + langBytes.size + textBytes.size)
-        data[0] = status.toByte()
+        data[0] = status.code.toByte()
         System.arraycopy(langBytes, 0, data, 1, langBytes.size)
         System.arraycopy(textBytes, 0, data, 1 + langBytes.size, textBytes.size)
         return NdefRecord(NdefRecord.TNF_WELL_KNOWN, NdefRecord.RTD_TEXT, ByteArray(0), data)
@@ -264,7 +256,7 @@ class MainActivity : ComponentActivity() {
             val nfcRecord = NdefRecord.createTextRecord("",message)
             nfcRecords.add(nfcRecord)
         }
-        val pathPrefix = "pj.com:read_nfc"
+  //      val pathPrefix = "pj.com:read_nfc"
 
         val nfcMessage = NdefMessage(nfcRecords.toTypedArray())
         intent?.let {
@@ -322,7 +314,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun Greeting(name: String) {
-    Text(text = "$name")
+    Text(text = name)
 }
 
 @Preview(showBackground = true)
